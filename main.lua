@@ -54,6 +54,9 @@ function love.update(dt)
 
 		-- [d]etonate
 		["d"] = function() -- TODO: refactor
+			if Game.grid[i][j].flag then
+				return
+			end
 			if Game.grid.blank then
 				Game.grid:placeMines(Game.cursor)
 				Game.grid[i][j].clicked = true
@@ -112,6 +115,8 @@ function love.draw()
 				else
 					display = " " -- Empty clicked cell
 				end
+			elseif cell.flag ~= nil then
+				display = cell.flag
 			end
 			love.graphics.print(display, x, y)
 		end
