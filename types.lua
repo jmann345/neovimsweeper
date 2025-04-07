@@ -1,0 +1,3 @@
+---@class Pos
+---@field i integer
+---@field j integer
