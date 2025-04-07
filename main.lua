@@ -1,5 +1,4 @@
 local Grid = require("grid")
-local Cell = require("cell")
 local Queue = require("queue")
 local textures = require("textures")
 local conf = require("conf")
@@ -29,7 +28,38 @@ end
 
 ---@param key string
 function love.keypressed(key)
-	Game.actionQueue:enqueue(key)
+	local shiftChars = {
+		["1"] = "!",
+		["2"] = "@",
+		["3"] = "#",
+		["4"] = "$",
+		["5"] = "%",
+		["6"] = "^",
+		["7"] = "&",
+		["8"] = "*",
+		["9"] = "(",
+		["0"] = ")",
+		["-"] = "_",
+		["="] = "+",
+		["["] = "{",
+		["]"] = "}",
+		["\\"] = "|",
+		[";"] = ":",
+		["'"] = '"',
+		[","] = "<",
+		["."] = ">",
+		["/"] = "?",
+		["`"] = "~",
+	}
+	local shift = love.keyboard.isDown("lshift") or love.keyboard.isDown("rshift")
+	if shift and shiftChars[key] then
+		Game.actionQueue:enqueue(shiftChars[key])
+	elseif shift and #key == 1 and key:match("%a") then
+		Game.actionQueue:enqueue(string.upper(key))
+	else
+		Game.actionQueue:enqueue(key)
+	end
+	print("Pressed key:", key)
 end
 
 ---@param dt number
@@ -50,7 +80,63 @@ function love.update(dt)
 		["l"] = function()
 			Game.cursor.j = Game.cursor.j + 1
 		end,
-		-- TODO: add, w$, b0, uU, gG
+		-- For w[right], b[left], u[up], and g[down] motions,
+		-- We move the cursor from an 'unclicked' cell to the next 'clicked' cell
+		-- Or vice versa. If nothing found, these function the same as 0/$/U/G
+		-- NOTE: Moves a minimum of two cells
+		["w"] = function()
+			local cursorClicked = Game.grid[i][j].clicked
+			for nj = j + 2, conf.columns do
+				if cursorClicked ~= Game.grid[i][nj].clicked then
+					Game.cursor.j = nj
+					return
+				end
+			end
+			Game.cursor.j = conf.columns
+		end,
+		["b"] = function()
+			local cursorClicked = Game.grid[i][j].clicked
+			for nj = j - 2, 1, -1 do
+				if cursorClicked ~= Game.grid[i][nj].clicked then
+					Game.cursor.j = nj
+					return
+				end
+			end
+			Game.cursor.j = 1
+		end,
+		["u"] = function()
+			local cursorClicked = Game.grid[i][j].clicked
+			for ni = i - 2, 1, -1 do
+				if cursorClicked ~= Game.grid[ni][j].clicked then
+					Game.cursor.i = ni
+					return
+				end
+			end
+			Game.cursor.i = 1
+		end,
+		["g"] = function()
+			local cursorClicked = Game.grid[i][j].clicked
+			for ni = i + 2, conf.rows do
+				if cursorClicked ~= Game.grid[ni][j].clicked then
+					Game.cursor.i = ni
+					return
+				end
+			end
+			Game.cursor.i = conf.rows
+		end,
+		-- Top/bot/farleft/farright
+		["0"] = function()
+			Game.cursor.j = 1
+		end,
+		["$"] = function()
+			Game.cursor.j = conf.columns
+		end,
+		["U"] = function()
+			Game.cursor.i = 1
+		end,
+		["G"] = function()
+			Game.cursor.i = conf.rows
+		end,
 
 		-- [d]etonate
 		["d"] = function() -- TODO: refactor
@@ -100,6 +186,7 @@ function love.update(dt)
 	Game.cursor.j = math.max(Game.cursor.j, 1)
 end
 
+-- TODO: Full implementation w/ textures
 function love.draw()
 	for i = 1, conf.rows do
 		for j = 1, conf.columns do
