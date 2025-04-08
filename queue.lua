@@ -1,4 +1,4 @@
----@class Queue : table
+---@class Queue
 ---@field first integer
 ---@field last integer
 local Queue = {}
@@ -25,6 +25,7 @@ function Queue:dequeue()
 	return item
 end
 
+---@return boolean
 function Queue:empty()
 	return self.first > self.last
 end

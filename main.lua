@@ -59,7 +59,6 @@ function love.keypressed(key)
 	else
 		Game.actionQueue:enqueue(key)
 	end
-	print("Pressed key:", key)
 end
 
 ---@param dt number
@@ -146,13 +145,13 @@ function love.update(dt)
 			if Game.grid.blank then
 				Game.grid:placeMines(Game.cursor)
 				Game.grid[i][j].clicked = true
-				Game.grid:floodFill(i, j)
+				Game.grid:floodFill(Game.cursor)
 			else
 				Game.grid[i][j].clicked = true
 				if Game.grid[i][j].mine then
 					-- TODO: Game over screen (show whole map)
 				elseif Game.grid[i][j].number == 0 then
-					Game.grid:floodFill(i, j)
+					Game.grid:floodFill(Game.cursor)
 				end
 			end
 		end,

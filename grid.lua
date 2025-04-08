@@ -2,9 +2,10 @@ local conf = require("conf")
 local Cell = require("cell")
 local Queue = require("queue")
 
----@type Cell[][]
 ---@class Grid
----@field [any] any
+---@field [integer] Cell[]  -- Each Grid[i] is a row of cells
+---@field blank boolean
+---@operator call: Grid
 local Grid = {}
 Grid.__index = Grid
 Grid.__call = function(cls)
@@ -21,17 +22,16 @@ Grid.__call = function(cls)
 end
 setmetatable(Grid, Grid)
 
----@param r integer
----@param c integer
----@return table<integer, integer>[] neighbors
-function Grid.getNeighbors(r, c)
+---@param pos Pos
+---@return Pos[] neighbors
+function Grid.getNeighbors(pos)
 	local neighbors = {}
-	for i = r - 1, r + 1 do
-		for j = c - 1, c + 1 do
-			local neighbor = not (i == r and j == c)
+	for i = pos.i - 1, pos.i + 1 do
+		for j = pos.j - 1, pos.j + 1 do
+			local neighbor = not (i == pos.i and j == pos.j)
 			local validCell = neighbor and (i > 0 and j > 0 and i <= conf.rows and j <= conf.columns)
 			if validCell then
-				table.insert(neighbors, { i, j })
+				table.insert(neighbors, { i = i, j = j })
 			end
 		end
 	end
@@ -40,42 +40,41 @@ end
 
 ---@param firstClickPos Pos
 function Grid:placeMines(firstClickPos)
-	local pairs = {} -- Table to hold the unique pairs
+	---@type Pos[]
+	local minePositions = {} -- Table to hold the unique pairs
+	---@type table<string, boolean>
 	local seen = {} -- Tracks which pairs have been generated
 
 	-- Don't place mines at first click position and neighbors
 	seen[firstClickPos.i .. "," .. firstClickPos.j] = true
-	local firstClickNeighbors = self.getNeighbors(firstClickPos.i, firstClickPos.j)
+	local firstClickNeighbors = self.getNeighbors(firstClickPos)
 	for _, nb in ipairs(firstClickNeighbors) do
-		local ni, nj = nb[1], nb[2]
-		seen[ni .. "," .. nj] = true
+		seen[nb.i .. "," .. nb.j] = true
 	end
 
-	while #pairs < conf.mines do
-		math.randomseed()
+	math.randomseed()
+	while #minePositions < conf.mines do
 		local i = math.random(1, conf.rows)
 		local j = math.random(1, conf.columns)
 		local key = i .. "," .. j -- Needed bc u cant compare tables
 
 		if not seen[key] then
 			seen[key] = true
-			table.insert(pairs, { i, j })
+			table.insert(minePositions, { i = i, j = j })
 		end
 	end
 
-	for _, value in ipairs(pairs) do
-		local i, j = value[1], value[2]
-		self[i][j].mine = true
+	for _, pos in ipairs(minePositions) do
+		self[pos.i][pos.j].mine = true
 	end
 
 	for i = 1, conf.rows do
 		for j = 1, conf.columns do
 			if not self[i][j].mine then
-				local neighbors = self.getNeighbors(i, j)
-				for _, nb in ipairs(neighbors) do
-					local ni, nj = nb[1], nb[2]
+				local neighbors = self.getNeighbors({ i = i, j = j })
 
-					if self[ni][nj].mine then
+				for _, nb in ipairs(neighbors) do
+					if self[nb.i][nb.j].mine then
 						self[i][j].number = self[i][j].number + 1
 					end
 				end
@@ -86,24 +85,19 @@ function Grid:placeMines(firstClickPos)
 	self.blank = false
 end
 
----@param r integer
----@param c integer
-function Grid:floodFill(r, c)
+---@param origin Pos
+function Grid:floodFill(origin)
 	local queue = Queue()
-	queue:enqueue({ r, c })
-
+	queue:enqueue(origin)
 	repeat
 		local pos = queue:dequeue()
-		local i, j = pos[1], pos[2]
-
-		local neighbors = self.getNeighbors(i, j)
+		local neighbors = self.getNeighbors(pos)
 		for _, nb in ipairs(neighbors) do
-			local ni, nj = nb[1], nb[2]
-			if not self[ni][nj].mine and not self[ni][nj].clicked then
-				self[ni][nj].clicked = true
+			if not self[nb.i][nb.j].mine and not self[nb.i][nb.j].clicked then
+				self[nb.i][nb.j].clicked = true
 
-				if self[ni][nj].number == 0 then
-					queue:enqueue({ ni, nj })
+				if self[nb.i][nb.j].number == 0 then
+					queue:enqueue({ i = nb.i, j = nb.j })
 				end
 			end
 		end

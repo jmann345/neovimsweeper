@@ -1,3 +1,1 @@
----@class Pos
----@field i integer
----@field j integer
+---@alias Pos { i: integer, j: integer }
